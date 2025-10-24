@@ -23,6 +23,26 @@ class TestOAuthRoutes:
         response = client.get("/auth/oauth/google", follow_redirects=False)
         assert response.status_code in [302, 307]  # 리다이렉트 상태
 
+    def test_refresh_token_endpoint(self, client, db):  # ✅ 여기로 이동 + self 추가
+        """Refresh Token으로 Access Token 재발급 테스트"""
+        # 1. 테스트 토큰 발급
+        response = client.post("/auth/oauth/test-token?email=test@example.com")
+        assert response.status_code == 200
+        
+        data = response.json()
+        refresh_token = data["refresh_token"]
+        
+        # 2. Refresh Token으로 새 Access Token 발급
+        refresh_response = client.post(
+            "/auth/oauth/refresh",
+            json={"refresh_token": refresh_token}
+        )
+        
+        assert refresh_response.status_code == 200
+        new_token = refresh_response.json()["access_token"]
+        assert new_token is not None
+        assert new_token != data["access_token"]
+
 
 class TestUserModel:
     """User 모델 테스트"""

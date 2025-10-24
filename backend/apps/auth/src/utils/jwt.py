@@ -4,11 +4,12 @@ from typing import Dict, Any
 from jose import jwt, JWTError
 from fastapi import HTTPException
 import os
+import time
 
 # 환경 변수
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))  # 기본 24시간
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))  # 기본 24시간
 
 def create_jwt_token(user_id: int, email: str, name: str = None) -> str:
     """
@@ -23,13 +24,15 @@ def create_jwt_token(user_id: int, email: str, name: str = None) -> str:
     """
     # 만료 시간 계산
     expire = datetime.utcnow() + timedelta(minutes=JWT_EXPIRE_MINUTES)
+
+    iat_timestamp = time.time()
     
     # 페이로드 구성
     payload = {
         "user_id": user_id,
         "email": email,
         "exp": expire,
-        "iat": datetime.utcnow(),  # 발급 시간
+        "iat": iat_timestamp,  # 발급 시간
     }
     
     # 이름이 있으면 추가
@@ -60,13 +63,12 @@ def verify_jwt_token(token: str) -> Dict[str, Any]:
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-def create_refresh_token(user_id: int, email: str) -> str:
+def create_refresh_token(user_id: int) -> str:
     """
     Refresh 토큰 생성
     
     Args:
         user_id: 사용자 ID
-        email: 사용자 이메일
         
     Returns:
         Refresh 토큰 문자열
@@ -75,7 +77,6 @@ def create_refresh_token(user_id: int, email: str) -> str:
     payload = {
         "user_id": user_id,
         "type": "refresh",
-        "email": email,
         "exp": expire,
         "iat": datetime.utcnow(),
     }
