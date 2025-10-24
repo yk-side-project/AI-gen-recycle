@@ -68,11 +68,11 @@ services:
       PUBLIC_S3_BASEURL: ${PUBLIC_S3_BASEURL:-http://localhost:9000}
 
       # Auth 서비스 연동 (신규) ⭐
-      # AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth:8000}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth:8000}
       # JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
 
       # DB 연결 (이미지 메타데이터 저장용, 선택)
-      # DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-recycle_db}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-recycle_db}
       
       
       PORT: 8080
@@ -107,7 +107,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       
       # 기타
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ## ⭐️배포 환경 구성 시 주석 해제
       # ENVIRONMENT: ${ENVIRONMENT:-production}
     ports:
