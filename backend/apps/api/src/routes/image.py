@@ -1,12 +1,124 @@
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, HTTPException, Path, Query, Depends
+from sqlalchemy.orm.session import Session
+from src.routes.users import get_user
+from src.models.database import get_db
 from src.models.schemas import ImageResponse
 from src.utils.s3 import s3_internal, s3_public
 from src.config import S3_BUCKET
 from botocore.exceptions import ClientError
 import urllib.parse
 import os
+from src.models.image import Image
+from src.utils.auth import get_current_user
+from src.models.user import User
 
 router = APIRouter()
+
+def get_user_by_id(user_id: int, db: Session) -> User | None:
+    """사용자 ID로 조회 (내부용)"""
+    return db.query(User).filter(User.id == user_id).first()
+
+
+@router.get("/images/public")
+async def list_all_images(
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100)
+):
+    """모든 이미지 목록"""
+    images = db.query(Image)\
+        .order_by(Image.created_at.desc())\
+        .offset(skip)\
+        .limit(limit)\
+        .all()
+    
+    result = []
+    for img in images:
+        url = s3_public.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': S3_BUCKET, 'Key': img.object_key},
+            ExpiresIn=3600
+        )
+
+        user = get_user_by_id(img.user_id, db)
+
+        result.append({
+            "id": img.id,
+            "key": img.object_key,
+            "filename": img.filename,
+            "size": img.size,
+            "url": url,
+            "created_at": img.created_at.isoformat(),
+            "user_id": img.user_id,
+            "user": user  # ✅ 업로더 정보 포함
+        })
+    
+    return {"images": result, "count": len(result)}
+
+@router.get("/images")
+async def list_my_images(
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100)
+):
+    """내가 업로드한 이미지 목록"""
+    images = db.query(Image)\
+        .filter(Image.user_id == user_id)\
+        .order_by(Image.created_at.desc())\
+        .offset(skip)\
+        .limit(limit)\
+        .all()
+    
+    # Presigned URL 생성
+    result = []
+    for img in images:
+        url = s3_public.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': S3_BUCKET, 'Key': img.object_key},
+            ExpiresIn=3600
+        )
+        result.append({
+            "id": img.id,
+            "key": img.object_key,
+            "filename": img.filename,
+            "size": img.size,
+            "url": url,
+            "created_at": img.created_at.isoformat()
+        })
+    
+    return {"images": result, "count": len(result)}
+
+
+@router.get("/images/user/{user_id}")
+async def list_user_images(
+    user_id: int = Path(..., description="사용자 ID"),
+    db: Session = Depends(get_db),
+):
+    """사용자가 업로드한 이미지 목록"""
+    images = db.query(Image)\
+        .filter(Image.user_id == user_id)\
+        .order_by(Image.created_at.desc())\
+        .all()
+    
+    # Presigned URL 생성
+    result = []
+    for img in images:
+        url = s3_public.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': S3_BUCKET, 'Key': img.object_key},
+            ExpiresIn=3600
+        )
+        result.append({
+            "id": img.id,
+            "key": img.object_key,
+            "filename": img.filename,
+            "size": img.size,
+            "url": url,
+            "created_at": img.created_at.isoformat()
+        })
+    
+    return {"images": result, "count": len(result)}
 
 @router.get("/images/{key:path}", response_model=ImageResponse)
 def create_presigned_get(

@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
@@ -103,7 +103,7 @@ def create_test_token(email: str = "test@example.com", db: Session = Depends(get
     
     user_info = {
         'provider': 'test',
-        'provider_user_id': 'test123',
+        'provider_user_id': email,
         'email': email,
         'name': "Test User",
     }
